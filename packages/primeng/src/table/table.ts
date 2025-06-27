@@ -82,6 +82,7 @@ import {
     TableRowUnSelectEvent,
     TableSelectAllChangeEvent
 } from './table.interface';
+import { isRTL } from '@primeuix/utils';
 
 @Injectable()
 export class TableService {
@@ -2589,33 +2590,29 @@ export class Table<RowData = any> extends BaseComponent implements OnInit, After
     }
 
     onColumnResizeBegin(event: any) {
-        let containerLeft = DomHandler.getOffset(this.el?.nativeElement).left;
+        const containerLeft = this.el?.nativeElement.getBoundingClientRect().left;
         this.resizeColumnElement = event.target.closest('th');
         this.columnResizing = true;
-        if (event.type == 'touchstart') {
-            this.lastResizerHelperX = event.changedTouches[0].clientX - containerLeft + this.el?.nativeElement.scrollLeft;
-        } else {
-            this.lastResizerHelperX = event.pageX - containerLeft + this.el?.nativeElement.scrollLeft;
-        }
+        this.lastResizerHelperX = (event.type == 'touchstart' ?  event.changedTouches[0].clientX : event.pageX) - containerLeft;
         this.onColumnResize(event);
         event.preventDefault();
     }
 
     onColumnResize(event: any) {
-        let containerLeft = DomHandler.getOffset(this.el?.nativeElement).left;
+        const containerLeft = this.el?.nativeElement.getBoundingClientRect().left;
         DomHandler.addClass(this.el?.nativeElement, 'p-unselectable-text');
-        (<ElementRef>this.resizeHelperViewChild).nativeElement.style.height = this.el?.nativeElement.offsetHeight + 'px';
-        (<ElementRef>this.resizeHelperViewChild).nativeElement.style.top = 0 + 'px';
-        if (event.type == 'touchmove') {
-            (<ElementRef>this.resizeHelperViewChild).nativeElement.style.left = event.changedTouches[0].clientX - containerLeft + this.el?.nativeElement.scrollLeft + 'px';
-        } else {
-            (<ElementRef>this.resizeHelperViewChild).nativeElement.style.left = event.pageX - containerLeft + this.el?.nativeElement.scrollLeft + 'px';
-        }
-        (<ElementRef>this.resizeHelperViewChild).nativeElement.style.display = 'block';
+        const helper = (<ElementRef>this.resizeHelperViewChild).nativeElement;
+        helper.style.height = this.el?.nativeElement.offsetHeight + 'px';
+        helper.style.top = 0 + 'px';
+        helper.style.left = ((event.type == 'touchstart' ?  event.changedTouches[0].clientX : event.pageX) - containerLeft) + 'px';
+        helper.style.display = 'block';
     }
 
     onColumnResizeEnd() {
-        const delta = this.resizeHelperViewChild?.nativeElement.offsetLeft - <number>this.lastResizerHelperX;
+        const helperLeft = this.resizeHelperViewChild?.nativeElement.getBoundingClientRect().left;
+        const containerRect = this.el?.nativeElement.getBoundingClientRect();
+        const currentX = helperLeft - containerRect.left;
+        const delta = isRTL(this.el?.nativeElement) ? this.lastResizerHelperX - currentX : currentX - this.lastResizerHelperX;
         const columnWidth = this.resizeColumnElement.offsetWidth;
         const newColumnWidth = columnWidth + delta;
         const elementMinWidth = this.resizeColumnElement.style.minWidth.replace(/[^\d.]/g, '');
