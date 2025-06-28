@@ -82,6 +82,7 @@ import {
     TableRowUnSelectEvent,
     TableSelectAllChangeEvent
 } from './table.interface';
+import { isRTL } from '@primeuix/utils';
 
 @Injectable()
 export class TableService {
@@ -2615,7 +2616,8 @@ export class Table<RowData = any> extends BaseComponent implements OnInit, After
     }
 
     onColumnResizeEnd() {
-        const delta = this.resizeHelperViewChild?.nativeElement.offsetLeft - <number>this.lastResizerHelperX;
+        const currentX = DomHandler.getOffset(this.resizeHelperViewChild?.nativeElement).left - DomHandler.getOffset(this.el?.nativeElement).left;
+        const delta = isRTL(this.el?.nativeElement) ? this.lastResizerHelperX - currentX : currentX - this.lastResizerHelperX;
         const columnWidth = this.resizeColumnElement.offsetWidth;
         const newColumnWidth = columnWidth + delta;
         const elementMinWidth = this.resizeColumnElement.style.minWidth.replace(/[^\d.]/g, '');
