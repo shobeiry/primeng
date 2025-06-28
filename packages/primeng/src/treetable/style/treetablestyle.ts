@@ -507,6 +507,10 @@ p-treetable-sort-icon {
     align-items: center;
     gap: dt('treetable.header.cell.gap');
 }
+
+p-treetable-toggler chevronrighticon:dir(rtl) {
+    transform: rotate(-180deg);
+}
 `;
 
 const classes = {

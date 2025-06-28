@@ -1,6 +1,15 @@
 import { Injectable } from '@angular/core';
 import { style } from '@primeuix/styles/tieredmenu';
 import { BaseStyle } from 'primeng/base';
+import { css } from '@primeuix/styled';
+
+const customStyles = css`
+    ${style}
+
+    svg[data-p-icon="angle-right"]:dir(rtl) {
+        transform: rotate(180deg);
+    }
+`;
 
 const inlineStyles = {
     submenu: ({ instance, processedItem }) => ({ display: instance.isItemActive(processedItem) ? 'flex' : 'none' })
@@ -39,7 +48,7 @@ const classes = {
 export class TieredMenuStyle extends BaseStyle {
     name = 'tieredmenu';
 
-    style = style;
+    style = customStyles;
 
     classes = classes;
 

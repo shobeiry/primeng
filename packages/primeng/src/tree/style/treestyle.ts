@@ -1,6 +1,14 @@
 import { Injectable } from '@angular/core';
 import { style } from '@primeuix/styles/tree';
 import { BaseStyle } from 'primeng/base';
+import { css } from '@primeuix/styled';
+
+const customStyles = css`
+    ${style}
+    .p-tree-node-toggle-button chevronrighticon:dir(rtl) {
+        transform: rotate(-180deg);
+    }
+`;
 
 const classes = {
     root: ({ instance }) => [
@@ -38,7 +46,7 @@ const classes = {
 export class TreeStyle extends BaseStyle {
     name = 'tree';
 
-    style = style;
+    style = customStyles;
 
     classes = classes;
 }
