@@ -28,7 +28,7 @@ import {
     ViewRef
 } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { absolutePosition, addStyle, appendChild, findLastIndex, findSingle, focus, getOuterWidth, isEmpty, isNotEmpty, isPrintableCharacter, isTouchDevice, nestedPosition, relativePosition, resolve, uuid } from '@primeuix/utils';
+import { addStyle, appendChild, findLastIndex, findSingle, focus, getOuterWidth, isEmpty, isNotEmpty, isPrintableCharacter, isTouchDevice, nestedPosition, relativePosition, resolve, uuid } from '@primeuix/utils';
 import { MenuItem, OverlayService, PrimeTemplate, SharedModule } from 'primeng/api';
 import { BaseComponent } from 'primeng/basecomponent';
 import { ConnectedOverlayScrollHandler } from 'primeng/dom';
@@ -38,6 +38,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { Nullable, VoidListener } from 'primeng/ts-helpers';
 import { ZIndexUtils } from 'primeng/utils';
 import { TieredMenuStyle } from './style/tieredmenustyle';
+import { absolutePosition } from 'primeng/utils';
 
 @Component({
     selector: 'p-tieredMenuSub, p-tieredmenusub',
