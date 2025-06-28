@@ -247,6 +247,7 @@ export class ConfirmPopup extends BaseComponent implements AfterContentInit, OnD
                 }
 
                 this.visible = true;
+                this.align();
             }
         });
     }
@@ -354,7 +355,7 @@ export class ConfirmPopup extends BaseComponent implements AfterContentInit, OnD
         if (containerOffset.left < targetOffset.left) {
             arrowLeft = targetOffset.left - containerOffset.left;
         }
-        (this.container as HTMLDivElement).style.setProperty('--p-confirmpopup-arrow-left', `${arrowLeft}px`);
+        (this.container as HTMLDivElement)?.style?.setProperty('--p-confirmpopup-arrow-left', `${arrowLeft}px`);
 
         if (containerOffset.top < targetOffset.top) {
             addClass(this.container, 'p-confirm-popup-flipped');
