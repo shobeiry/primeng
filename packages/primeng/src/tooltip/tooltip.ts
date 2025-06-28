@@ -379,6 +379,7 @@ export class Tooltip extends BaseComponent implements AfterViewInit, OnDestroy {
         if (this.documentEscapeListener) {
             this.documentEscapeListener();
         }
+        this.cd.detectChanges();
     }
 
     create() {
