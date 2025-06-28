@@ -449,6 +449,10 @@ p-treetable-toggler + p-treetable-checkbox + span,
 p-tree-table-toggler + p-tree-table-checkbox + span {
     vertical-align: middle;
 }
+
+p-treetable-toggler chevronrighticon:dir(rtl) {
+    transform: rotate(-180deg);
+}
 `;
 
 const classes = {
