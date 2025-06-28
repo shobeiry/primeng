@@ -38,10 +38,15 @@ export interface Translation {
     dayNamesShort?: string[];
     dayNamesMin?: string[];
     monthNames?: string[];
+    jalaliMonthNames?: string[];
     monthNamesShort?: string[];
+    jalaliMonthNamesShort?: string[];
     dateFormat?: string;
     firstDayOfWeek?: number;
+    jalaliFirstDayOfWeek?: number;
     today?: string;
+    gregorianCalenderName?: string;
+    jalaliCalenderName?: string;
     weekHeader?: string;
     weak?: string;
     medium?: string;

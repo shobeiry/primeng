@@ -31,9 +31,14 @@ export class TranslationKeys {
     public static readonly DAY_NAMES_SHORT = 'dayNamesShort';
     public static readonly DAY_NAMES_MIN = 'dayNamesMin';
     public static readonly MONTH_NAMES = 'monthNames';
+    public static readonly JALALI_MONTH_NAMES = 'jalaliMonthNames';
     public static readonly MONTH_NAMES_SHORT = 'monthNamesShort';
+    public static readonly JALALI_MONTH_NAMES_SHORT = 'jalaliMonthNamesShort';
     public static readonly FIRST_DAY_OF_WEEK = 'firstDayOfWeek';
+    public static readonly JALALI_FIRST_DAY_OF_WEEK = 'jalaliFirstDayOfWeek';
     public static readonly TODAY = 'today';
+    public static readonly GREGORIAN_CALENDER_NAME = 'gregorianCalenderName';
+    public static readonly JALALI_CALENDER_NAME = 'jalaliCalenderName';
     public static readonly WEEK_HEADER = 'weekHeader';
     public static readonly WEAK = 'weak';
     public static readonly MEDIUM = 'medium';

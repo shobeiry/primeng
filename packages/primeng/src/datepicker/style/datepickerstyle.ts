@@ -10,6 +10,10 @@ const theme = css`
     .p-datepicker.ng-invalid.ng-dirty .p-inputtext {
         border-color: ${dt('inputtext.invalid.border.color')};
     }
+
+    .p-datepicker-header .p-iconwrapper:dir(rtl) {
+        transform: rotate(180deg);
+    }
 `;
 
 const inlineStyles = {
@@ -110,7 +114,8 @@ const classes = {
     buttonbar: 'p-datepicker-buttonbar',
     pcTodayButton: 'p-datepicker-today-button',
     pcClearButton: 'p-datepicker-clear-button',
-    clearIcon: 'p-datepicker-clear-icon'
+    clearIcon: 'p-datepicker-clear-icon',
+    pcChangeCalendarButton: 'p-datepicker-change-calendar-button'
 };
 
 @Injectable()
@@ -286,6 +291,10 @@ export enum DatePickerClasses {
      * Class name of the clear button element
      */
     pcClearButton = 'p-datepicker-clear-button',
+    /**
+     * Class name of the change calendar button element
+     */
+    pcChangeCalendarButton = 'p-datepicker-change-calendar-button',
     /**
      * Class name of the clear icon
      */

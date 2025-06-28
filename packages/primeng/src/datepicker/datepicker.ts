@@ -25,7 +25,7 @@ import {
     ViewEncapsulation
 } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { absolutePosition, addClass, addStyle, appendChild, find, findSingle, getFocusableElements, getIndex, getOuterWidth, hasClass, isDate, isNotEmpty, isTouchDevice, relativePosition, setAttribute, uuid } from '@primeuix/utils';
+import { addClass, addStyle, appendChild, find, findSingle, getFocusableElements, getIndex, getOuterWidth, hasClass, isDate, isNotEmpty, isTouchDevice, setAttribute, uuid } from '@primeuix/utils';
 import { OverlayService, PrimeTemplate, SharedModule, TranslationKeys } from 'primeng/api';
 import { AutoFocus } from 'primeng/autofocus';
 import { BaseInput } from 'primeng/baseinput';
@@ -35,16 +35,18 @@ import { CalendarIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, Chevr
 import { InputText } from 'primeng/inputtext';
 import { Ripple } from 'primeng/ripple';
 import { Nullable, VoidListener } from 'primeng/ts-helpers';
-import { ZIndexUtils } from 'primeng/utils';
+import { absolutePositionForDatePicker as absolutePosition, relativePosition, ZIndexUtils } from 'primeng/utils';
 import { Subscription } from 'rxjs';
 import { DatePickerMonthChangeEvent, DatePickerResponsiveOptions, DatePickerTypeView, DatePickerYearChangeEvent, LocaleSettings, Month, NavigationState } from './datepicker.interface';
 import { DatePickerStyle } from './style/datepickerstyle';
+import { JDate } from './utils/jalali';
 
 export const DATEPICKER_VALUE_ACCESSOR: any = {
     provide: NG_VALUE_ACCESSOR,
     useExisting: forwardRef(() => DatePicker),
     multi: true
 };
+
 /**
  * DatePicker is a form component to work with dates.
  * @group Components
@@ -140,6 +142,7 @@ export const DATEPICKER_VALUE_ACCESSOR: any = {
             (@overlayAnimation.done)="onOverlayAnimationDone($event)"
             (click)="onOverlayClick($event)"
             *ngIf="inline || overlayVisible"
+            [dir]="dir"
         >
             <ng-content select="p-header"></ng-content>
             <ng-container *ngTemplateOutlet="headerTemplate || _headerTemplate"></ng-container>
@@ -287,7 +290,7 @@ export const DATEPICKER_VALUE_ACCESSOR: any = {
 
                         <ng-template *ngTemplateOutlet="incrementIconTemplate || _incrementIconTemplate"></ng-template>
                     </p-button>
-                    <span><ng-container *ngIf="currentHour < 10">0</ng-container>{{ currentHour }}</span>
+                    <span><ng-container *ngIf="currentHour < 10">0</ng-container> {{ currentHour }}</span>
                     <p-button
                         rounded
                         text
@@ -331,7 +334,7 @@ export const DATEPICKER_VALUE_ACCESSOR: any = {
 
                         <ng-template *ngTemplateOutlet="incrementIconTemplate || _incrementIconTemplate"></ng-template>
                     </p-button>
-                    <span><ng-container *ngIf="currentMinute < 10">0</ng-container>{{ currentMinute }}</span>
+                    <span><ng-container *ngIf="currentMinute < 10">0</ng-container> {{ currentMinute }}</span>
                     <p-button
                         rounded
                         text
@@ -376,7 +379,7 @@ export const DATEPICKER_VALUE_ACCESSOR: any = {
 
                         <ng-template *ngTemplateOutlet="incrementIconTemplate || _incrementIconTemplate"></ng-template>
                     </p-button>
-                    <span><ng-container *ngIf="currentSecond < 10">0</ng-container>{{ currentSecond }}</span>
+                    <span><ng-container *ngIf="currentSecond < 10">0</ng-container> {{ currentSecond }}</span>
                     <p-button
                         rounded
                         text
@@ -414,6 +417,16 @@ export const DATEPICKER_VALUE_ACCESSOR: any = {
             </div>
             <div [class]="cx('buttonbar')" *ngIf="showButtonBar">
                 <p-button size="small" [styleClass]="cx('pcTodayButton')" [label]="getTranslation('today')" (keydown)="onContainerButtonKeydown($event)" (onClick)="onTodayButtonClick($event)" [ngClass]="todayButtonStyleClass" />
+                @if (showCalendarChangerButton) {
+                    <p-button
+                        size="small"
+                        [label]="getTranslation(isJalali ? 'gregorianCalenderName' : 'jalaliCalenderName')"
+                        (keydown)="onContainerButtonKeydown($event)"
+                        (click)="onChangeCalenderButtonClick($event)"
+                        [styleClass]="cx('pcChangeCalendarButton')"
+                        [ngClass]="changeCalendarButtonStyleClass"
+                    />
+                }
                 <p-button size="small" [styleClass]="cx('pcClearButton')" [label]="getTranslation('clear')" (keydown)="onContainerButtonKeydown($event)" (onClick)="onClearButtonClick($event)" [ngClass]="clearButtonStyleClass" />
             </div>
             <ng-content select="p-footer"></ng-content>
@@ -452,6 +465,8 @@ export const DATEPICKER_VALUE_ACCESSOR: any = {
     }
 })
 export class DatePicker extends BaseInput implements OnInit, AfterContentInit, AfterViewInit, OnDestroy, ControlValueAccessor {
+    @Input() isJalali: boolean = false;
+    @Input() dir: 'ltr' | 'rtl';
     @Input() iconDisplay: 'input' | 'button' = 'button';
     /**
      * Style class of the component.
@@ -495,6 +510,7 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
      * @group Props
      */
     @Input() iconAriaLabel: string | undefined;
+
     /**
      * Format of the date which can also be defined at locale settings.
      * @group Props
@@ -503,12 +519,14 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
     get dateFormat(): string | undefined {
         return this._dateFormat;
     }
+
     set dateFormat(value: string | undefined) {
         this._dateFormat = value;
         if (this.initialized) {
             this.updateInputfield();
         }
     }
+
     /**
      * Separator for multiple selection mode.
      * @group Props
@@ -554,6 +572,7 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
      * @group Props
      */
     @Input() shortYearCutoff: any = '+10';
+
     /**
      * Specifies 12 or 24 hour format.
      * @group Props
@@ -562,12 +581,14 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
     get hourFormat(): string {
         return this._hourFormat;
     }
+
     set hourFormat(value: string) {
         this._hourFormat = value;
         if (this.initialized) {
             this.updateInputfield();
         }
     }
+
     /**
      * Whether to display timepicker only.
      * @group Props
@@ -634,6 +655,11 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
      */
     @Input({ transform: booleanAttribute }) showButtonBar: boolean | undefined;
     /**
+     * Whether to display today and calendar changer buttons at the footer
+     * @group Props
+     */
+    @Input({ transform: booleanAttribute }) showCalendarChangerButton: boolean | undefined;
+    /**
      * Style class of the today button.
      * @group Props
      */
@@ -643,6 +669,11 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
      * @group Props
      */
     @Input() clearButtonStyleClass: string | undefined;
+    /**
+     * Style class of the calendar changer button.
+     * @group Props
+     */
+    @Input() changeCalendarButtonStyleClass: string = 'p-button-text';
     /**
      * When present, it specifies that the component should automatically get focus on load.
      * @group Props
@@ -708,6 +739,7 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
      * @group Props
      */
     @Input({ transform: numberAttribute }) tabindex: number | undefined;
+
     /**
      * The minimum selectable date.
      * @group Props
@@ -715,6 +747,7 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
     @Input() get minDate(): Date | undefined | null {
         return this._minDate;
     }
+
     set minDate(date: Date | undefined | null) {
         this._minDate = date;
 
@@ -722,6 +755,7 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
             this.createMonths(this.currentMonth, this.currentYear);
         }
     }
+
     /**
      * The maximum selectable date.
      * @group Props
@@ -729,6 +763,7 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
     @Input() get maxDate(): Date | undefined | null {
         return this._maxDate;
     }
+
     set maxDate(date: Date | undefined | null) {
         this._maxDate = date;
 
@@ -736,6 +771,7 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
             this.createMonths(this.currentMonth, this.currentYear);
         }
     }
+
     /**
      * Array with dates that should be disabled (not selectable).
      * @group Props
@@ -743,12 +779,14 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
     @Input() get disabledDates(): Date[] {
         return this._disabledDates;
     }
+
     set disabledDates(disabledDates: Date[]) {
         this._disabledDates = disabledDates;
         if (this.currentMonth != undefined && this.currentMonth != null && this.currentYear) {
             this.createMonths(this.currentMonth, this.currentYear);
         }
     }
+
     /**
      * Array with weekday numbers that should be disabled (not selectable).
      * @group Props
@@ -756,6 +794,7 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
     @Input() get disabledDays(): number[] {
         return this._disabledDays;
     }
+
     set disabledDays(disabledDays: number[]) {
         this._disabledDays = disabledDays;
 
@@ -763,6 +802,7 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
             this.createMonths(this.currentMonth, this.currentYear);
         }
     }
+
     /**
      * Whether to display timepicker.
      * @group Props
@@ -770,6 +810,7 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
     @Input() get showTime(): boolean {
         return this._showTime;
     }
+
     set showTime(showTime: boolean) {
         this._showTime = showTime;
 
@@ -778,6 +819,7 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
         }
         this.updateInputfield();
     }
+
     /**
      * An array of options for responsive design.
      * @group Props
@@ -785,12 +827,14 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
     @Input() get responsiveOptions(): DatePickerResponsiveOptions[] {
         return this._responsiveOptions;
     }
+
     set responsiveOptions(responsiveOptions: DatePickerResponsiveOptions[]) {
         this._responsiveOptions = responsiveOptions;
 
         this.destroyResponsiveStyleElement();
         this.createResponsiveStyle();
     }
+
     /**
      * Number of months to display.
      * @group Props
@@ -798,12 +842,14 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
     @Input() get numberOfMonths(): number {
         return this._numberOfMonths;
     }
+
     set numberOfMonths(numberOfMonths: number) {
         this._numberOfMonths = numberOfMonths;
 
         this.destroyResponsiveStyleElement();
         this.createResponsiveStyle();
     }
+
     /**
      * Defines the first of the week for various date calculations.
      * @group Props
@@ -811,11 +857,13 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
     @Input() get firstDayOfWeek(): number {
         return this._firstDayOfWeek;
     }
+
     set firstDayOfWeek(firstDayOfWeek: number) {
         this._firstDayOfWeek = firstDayOfWeek;
 
         this.createWeekDays();
     }
+
     /**
      * Type of view to display, valid values are "date" for datepicker and "month" for month picker.
      * @group Props
@@ -823,10 +871,12 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
     @Input() get view(): DatePickerTypeView {
         return this._view;
     }
+
     set view(view: DatePickerTypeView) {
         this._view = view;
         this.currentView = this._view;
     }
+
     /**
      * Set the date to highlight on first opening if the field is blank.
      * @group Props
@@ -834,13 +884,15 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
     @Input() get defaultDate(): Date {
         return this._defaultDate;
     }
+
     set defaultDate(defaultDate: Date) {
         this._defaultDate = defaultDate;
 
         if (this.initialized) {
             const date = defaultDate || new Date();
-            this.currentMonth = date.getMonth();
-            this.currentYear = date.getFullYear();
+            const _date = this.isJalali ? new JDate(date) : date;
+            this.currentMonth = _date.getMonth();
+            this.currentYear = _date.getFullYear();
             this.initTime(date);
             this.createMonths(this.currentMonth, this.currentYear);
         }
@@ -875,6 +927,12 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
      * @group Emits
      */
     @Output() onClear: EventEmitter<any> = new EventEmitter<any>();
+    /**
+     * Callback to invoke when calendar changer button is clicked.
+     * @param {Event} event - browser event.
+     * @group Emits
+     */
+    @Output() onChangeCalendarClick: EventEmitter<any> = new EventEmitter();
     /**
      * Callback to invoke when input field is being typed.
      * @param {Event} event - browser event
@@ -1177,8 +1235,9 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
         this.panelId = this.attributeSelector + '_panel';
         const date = this.defaultDate || new Date();
         this.createResponsiveStyle();
-        this.currentMonth = date.getMonth();
-        this.currentYear = date.getFullYear();
+        const _date = this.isJalali ? new Date(date) : date;
+        this.currentMonth = _date.getMonth();
+        this.currentYear = _date.getFullYear();
         this.yearOptions = [];
         this.currentView = this.view;
 
@@ -1298,7 +1357,7 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
     monthPickerValues() {
         let monthPickerValues = [];
         for (let i = 0; i <= 11; i++) {
-            monthPickerValues.push(this.config.getTranslation('monthNamesShort')[i]);
+            monthPickerValues.push(this.config.getTranslation(this.isJalali ? 'jalaliMonthNamesShort' : 'monthNamesShort')[i]);
         }
 
         return monthPickerValues;
@@ -1648,11 +1707,12 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
     }
 
     formatDateMetaToDate(dateMeta: any): Date {
-        return new Date(dateMeta.year, dateMeta.month, dateMeta.day);
+        return this.isJalali ? new JDate(dateMeta.year, dateMeta.month, dateMeta.day).toDate() : new Date(dateMeta.year, dateMeta.month, dateMeta.day);
     }
 
     formatDateKey(date: Date): string {
-        return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+        const _date = this.isJalali ? new JDate(date) : date;
+        return `${_date.getFullYear()}-${_date.getMonth()}-${_date.getDate()}`;
     }
 
     setCurrentHourPM(hours: number) {
@@ -1749,6 +1809,12 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
     }
 
     getFirstDayOfMonthIndex(month: number, year: number) {
+        if (this.isJalali) {
+            const day = new JDate(year, month, 1).toDate();
+            let dayIndex = day.getDay() + this.getSundayIndex();
+            return dayIndex >= 7 ? dayIndex - 7 : dayIndex;
+        }
+
         let day = new Date();
         day.setDate(1);
         day.setMonth(month);
@@ -1759,7 +1825,8 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
     }
 
     getDaysCountInMonth(month: number, year: number) {
-        return 32 - this.daylightSavingAdjust(new Date(year, month, 32)).getDate();
+        const daylightSavingAdjust = this.isJalali ? new JDate(this.daylightSavingAdjust(new JDate(year, month, 32).toDate())) : this.daylightSavingAdjust(new Date(year, month, 32));
+        return 32 - daylightSavingAdjust.getDate();
     }
 
     getDaysCountInPrevMonth(month: number, year: number) {
@@ -1837,10 +1904,9 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
             if (!this.value[1]) {
                 return this.value[0]?.getFullYear() === this.currentYear && this.value[0]?.getMonth() === month;
             } else {
-                const currentDate = new Date(this.currentYear, month, 1);
-                const startDate = new Date(this.value[0].getFullYear(), this.value[0].getMonth(), 1);
-                const endDate = new Date(this.value[1].getFullYear(), this.value[1].getMonth(), 1);
-
+                const [currentDate, startDate, endDate] = this.isJalali
+                    ? [new JDate(this.currentYear, month, 1).toDate(), new JDate(this.value[0].getFullYear(), this.value[0].getMonth(), 1).toDate(), new JDate(this.value[1].getFullYear(), this.value[1].getMonth(), 1).toDate()]
+                    : [new Date(this.currentYear, month, 1), new Date(this.value[0].getFullYear(), this.value[0].getMonth(), 1), new Date(this.value[1].getFullYear(), this.value[1].getMonth(), 1)];
                 return currentDate >= startDate && currentDate <= endDate;
             }
         } else {
@@ -1869,15 +1935,19 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
         if (this.isComparable()) {
             let value = this.isRangeSelection() ? this.value[0] : this.value;
 
-            return !this.isMultipleSelection() ? value.getFullYear() === year : false;
+            return !this.isMultipleSelection() ? (this.isJalali ? new JDate(value) : value).getFullYear() === year : false;
         }
 
         return false;
     }
 
     isDateEquals(value: any, dateMeta: any) {
-        if (value && isDate(value)) return value.getDate() === dateMeta.day && value.getMonth() === dateMeta.month && value.getFullYear() === dateMeta.year;
-        else return false;
+        if (value && isDate(value)) {
+            if (this.isJalali) {
+                value = new JDate(value);
+            }
+            return value.getDate() === dateMeta.day && value.getMonth() === dateMeta.month && value.getFullYear() === dateMeta.year;
+        } else return false;
     }
 
     isDateBetween(start: Date, end: Date, dateMeta: any) {
@@ -1903,7 +1973,8 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
     }
 
     isToday(today: Date, day: number, month: number, year: number): boolean {
-        return today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
+        const _today = this.isJalali ? new JDate(today) : today;
+        return _today.getDate() === day && _today.getMonth() === month && _today.getFullYear() === year;
     }
 
     isSelectable(day: any, month: any, year: any, otherMonth: any): boolean {
@@ -1917,13 +1988,14 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
         }
 
         if (this.minDate) {
-            if (this.minDate.getFullYear() > year) {
+            const minDate = this.isJalali ? new JDate(this.minDate) : this.minDate;
+            if (minDate.getFullYear() > year) {
                 validMin = false;
-            } else if (this.minDate.getFullYear() === year && this.currentView != 'year') {
-                if (this.minDate.getMonth() > month) {
+            } else if (minDate.getFullYear() === year && this.currentView != 'year') {
+                if (minDate.getMonth() > month) {
                     validMin = false;
-                } else if (this.minDate.getMonth() === month) {
-                    if (this.minDate.getDate() > day) {
+                } else if (minDate.getMonth() === month) {
+                    if (minDate.getDate() > day) {
                         validMin = false;
                     }
                 }
@@ -1931,13 +2003,14 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
         }
 
         if (this.maxDate) {
-            if (this.maxDate.getFullYear() < year) {
+            const maxDate = this.isJalali ? new JDate(this.maxDate) : this.maxDate;
+            if (maxDate.getFullYear() < year) {
                 validMax = false;
             } else if (this.maxDate.getFullYear() === year) {
-                if (this.maxDate.getMonth() < month) {
+                if (maxDate.getMonth() < month) {
                     validMax = false;
                 } else if (this.maxDate.getMonth() === month) {
-                    if (this.maxDate.getDate() < day) {
+                    if (maxDate.getDate() < day) {
                         validMax = false;
                     }
                 }
@@ -1958,7 +2031,8 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
     isDateDisabled(day: number, month: number, year: number): boolean {
         if (this.disabledDates) {
             for (let disabledDate of this.disabledDates) {
-                if (disabledDate.getFullYear() === year && disabledDate.getMonth() === month && disabledDate.getDate() === day) {
+                const _disabledDate = this.isJalali ? new JDate(disabledDate) : disabledDate;
+                if (_disabledDate.getFullYear() === year && _disabledDate.getMonth() === month && _disabledDate.getDate() === day) {
                     return true;
                 }
             }
@@ -1969,7 +2043,7 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
 
     isDayDisabled(day: number, month: number, year: number): boolean {
         if (this.disabledDays) {
-            let weekday = new Date(year, month, day);
+            let weekday = this.isJalali ? new JDate(year, month, day).toDate() : new Date(year, month, day);
             let weekdayNumber = weekday.getDay();
             return this.disabledDays.indexOf(weekdayNumber) !== -1;
         }
@@ -2028,7 +2102,7 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
     }
 
     getMonthName(index: number) {
-        return this.config.getTranslation('monthNames')[index];
+        return this.config.getTranslation(this.isJalali ? 'jalaliMonthNames' : 'monthNames')[index];
     }
 
     getYear(month: any) {
@@ -2906,9 +2980,17 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
 
     isValidSelection(value: any): boolean {
         if (this.isSingleSelection()) {
+            if (this.isJalali) {
+                value = new JDate(value);
+            }
             return this.isSelectable(value.getDate(), value.getMonth(), value.getFullYear(), false);
         }
-        let isValid = value.every((v: any) => this.isSelectable(v.getDate(), v.getMonth(), v.getFullYear(), false));
+        let isValid = value.every((v: any) => {
+            if (this.isJalali) {
+                v = new JDate(v);
+            }
+            return this.isSelectable(v.getDate(), v.getMonth(), v.getFullYear(), false);
+        });
         if (isValid && this.isRangeSelection()) {
             isValid = value.length === 1 || (value.length > 1 && value[1] >= value[0]);
         }
@@ -2987,9 +3069,9 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
         }
 
         let val = this.defaultDate && this.isValidDate(this.defaultDate) && !this.value ? this.defaultDate : propValue && this.isValidDate(propValue) ? propValue : new Date();
-
-        this.currentMonth = val.getMonth();
-        this.currentYear = val.getFullYear();
+        const date = this.isJalali ? new JDate(val) : val;
+        this.currentMonth = date.getMonth();
+        this.currentYear = date.getFullYear();
         this.createMonths(this.currentMonth, this.currentYear);
 
         if (this.showTime || this.timeOnly) {
@@ -3212,7 +3294,7 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
     }
 
     getFirstDateOfWeek() {
-        return this._firstDayOfWeek || this.getTranslation(TranslationKeys.FIRST_DAY_OF_WEEK);
+        return this._firstDayOfWeek || this.getTranslation(this.isJalali ? TranslationKeys.JALALI_FIRST_DAY_OF_WEEK : TranslationKeys.FIRST_DAY_OF_WEEK);
     }
 
     // Ported from jquery-ui datepicker formatDate
@@ -3245,6 +3327,7 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
         let literal = false;
 
         if (date) {
+            const _date = this.isJalali ? new JDate(date) : date;
             for (iFormat = 0; iFormat < format.length; iFormat++) {
                 if (literal) {
                     if (format.charAt(iFormat) === "'" && !lookAhead("'")) {
@@ -3255,28 +3338,41 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
                 } else {
                     switch (format.charAt(iFormat)) {
                         case 'd':
-                            output += formatNumber('d', date.getDate(), 2);
+                            output += formatNumber('d', _date.getDate(), 2);
                             break;
                         case 'D':
-                            output += formatName('D', date.getDay(), this.getTranslation(TranslationKeys.DAY_NAMES_SHORT), this.getTranslation(TranslationKeys.DAY_NAMES));
+                            output += formatName('D', _date.getDay(), this.getTranslation(TranslationKeys.DAY_NAMES_SHORT), this.getTranslation(TranslationKeys.DAY_NAMES));
                             break;
                         case 'o':
-                            output += formatNumber('o', Math.round((new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / 86400000), 3);
+                            output += formatNumber(
+                                'o',
+                                Math.round(
+                                    (this.isJalali
+                                        ? _date.toDate().getTime() - new JDate(_date.getYear(), 0, 0).toDate().getTime()
+                                        : new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / 86400000
+                                ),
+                                3
+                            );
                             break;
                         case 'm':
-                            output += formatNumber('m', date.getMonth() + 1, 2);
+                            output += formatNumber('m', _date.getMonth() + 1, 2);
                             break;
                         case 'M':
-                            output += formatName('M', date.getMonth(), this.getTranslation(TranslationKeys.MONTH_NAMES_SHORT), this.getTranslation(TranslationKeys.MONTH_NAMES));
+                            output += formatName(
+                                'M',
+                                _date.getMonth(),
+                                this.getTranslation(this.isJalali ? TranslationKeys.JALALI_MONTH_NAMES_SHORT : TranslationKeys.MONTH_NAMES_SHORT),
+                                this.getTranslation(this.isJalali ? TranslationKeys.JALALI_MONTH_NAMES : TranslationKeys.MONTH_NAMES)
+                            );
                             break;
                         case 'y':
-                            output += lookAhead('y') ? date.getFullYear() : (date.getFullYear() % 100 < 10 ? '0' : '') + (date.getFullYear() % 100);
+                            output += lookAhead('y') ? _date.getFullYear() : (_date.getFullYear() % 100 < 10 ? '0' : '') + (_date.getFullYear() % 100);
                             break;
                         case '@':
-                            output += date.getTime();
+                            output += _date.getTime();
                             break;
                         case '!':
-                            output += date.getTime() * 10000 + <number>this.ticksTo1970;
+                            output += _date.getTime() * 10000 + <number>this.ticksTo1970;
                             break;
                         case "'":
                             if (lookAhead("'")) {
@@ -3370,7 +3466,7 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
             dim,
             extra,
             iValue = 0,
-            shortYearCutoff = typeof this.shortYearCutoff !== 'string' ? this.shortYearCutoff : (new Date().getFullYear() % 100) + parseInt(this.shortYearCutoff, 10),
+            shortYearCutoff = typeof this.shortYearCutoff !== 'string' ? this.shortYearCutoff : ((this.isJalali ? new JDate(new Date()) : new Date()).getFullYear() % 100) + parseInt(this.shortYearCutoff, 10),
             year = -1,
             month = -1,
             day = -1,
@@ -3456,19 +3552,29 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
                         month = getNumber('m');
                         break;
                     case 'M':
-                        month = getName('M', this.getTranslation(TranslationKeys.MONTH_NAMES_SHORT), this.getTranslation(TranslationKeys.MONTH_NAMES));
+                        month = getName(
+                            'M',
+                            this.getTranslation(this.isJalali ? TranslationKeys.JALALI_MONTH_NAMES_SHORT : TranslationKeys.MONTH_NAMES_SHORT),
+                            this.getTranslation(this.isJalali ? TranslationKeys.JALALI_MONTH_NAMES : TranslationKeys.MONTH_NAMES)
+                        );
                         break;
                     case 'y':
                         year = getNumber('y');
                         break;
                     case '@':
                         date = new Date(getNumber('@'));
+                        if (this.isJalali) {
+                            date = new JDate(date);
+                        }
                         year = date.getFullYear();
                         month = date.getMonth() + 1;
                         day = date.getDate();
                         break;
                     case '!':
                         date = new Date((getNumber('!') - <number>this.ticksTo1970) / 10000);
+                        if (this.isJalali) {
+                            date = new JDate(date);
+                        }
                         year = date.getFullYear();
                         month = date.getMonth() + 1;
                         day = date.getDate();
@@ -3494,9 +3600,10 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
         }
 
         if (year === -1) {
-            year = new Date().getFullYear();
+            year = (this.isJalali ? new JDate(new Date()) : new Date()).getFullYear();
         } else if (year < 100) {
-            year += new Date().getFullYear() - (new Date().getFullYear() % 100) + (year <= shortYearCutoff ? 0 : -100);
+            const date = this.isJalali ? new JDate(new Date()) : new Date();
+            year += date.getFullYear() - (date.getFullYear() % 100) + (year <= shortYearCutoff ? 0 : -100);
         }
 
         if (doy > -1) {
@@ -3517,9 +3624,9 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
             day = day === -1 ? 1 : day;
         }
 
-        date = this.daylightSavingAdjust(new Date(year, month - 1, day));
-
-        if (date.getFullYear() !== year || date.getMonth() + 1 !== month || date.getDate() !== day) {
+        date = this.daylightSavingAdjust(this.isJalali ? new JDate(year, month - 1, day).toDate() : new Date(year, month - 1, day));
+        const _date = this.isJalali ? new JDate(date) : date;
+        if (_date.getFullYear() !== year || _date.getMonth() + 1 !== month || _date.getDate() !== day) {
             throw 'Invalid date'; // E.g. 31/02/00
         }
 
@@ -3544,7 +3651,8 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
     }
 
     onTodayButtonClick(event: any) {
-        const date: Date = new Date();
+        const _date = new Date();
+        const date = this.isJalali ? new JDate(_date) : _date;
         const dateMeta = {
             day: date.getDate(),
             month: date.getMonth(),
@@ -3556,7 +3664,17 @@ export class DatePicker extends BaseInput implements OnInit, AfterContentInit, A
 
         this.createMonths(date.getMonth(), date.getFullYear());
         this.onDateSelect(event, dateMeta);
-        this.onTodayClick.emit(date);
+        this.onTodayClick.emit(_date);
+    }
+
+    onChangeCalenderButtonClick(event: any) {
+        this.isJalali = !this.isJalali;
+        this.createWeekDays();
+        this.updateUI();
+        this.updateInputfield();
+        this.cd.detectChanges();
+        this.alignOverlay();
+        this.onChangeCalendarClick.emit(event);
     }
 
     onClearButtonClick(event: any) {
