@@ -3374,26 +3374,16 @@ export class FrozenColumn implements AfterViewChecked {
     updateStickyPosition() {
         if (this._frozen) {
             if (this.alignFrozen === 'right') {
-                let right = 0;
-                let next = this.el.nativeElement.nextElementSibling;
-                if (next) {
-                    right = DomHandler.getOuterWidth(next) + (parseFloat(next.style.right) || 0);
-                }
                 if (DomHandler.isRTL(this.el.nativeElement)) {
-                    this.el.nativeElement.style.left = right + 'px';
+                    this.el.nativeElement.style.right = 0;
                 } else {
-                    this.el.nativeElement.style.right = right + 'px';
+                    this.el.nativeElement.style.left = 0;
                 }
             } else {
-                let left = 0;
-                let prev = this.el.nativeElement.previousElementSibling;
-                if (prev) {
-                    left = DomHandler.getOuterWidth(prev) + (parseFloat(prev.style.left) || 0);
-                }
                 if (DomHandler.isRTL(this.el.nativeElement)) {
-                    this.el.nativeElement.style.right = left + 'px';
+                    this.el.nativeElement.style.left = 0;
                 } else {
-                    this.el.nativeElement.style.left = left + 'px';
+                    this.el.nativeElement.style.right = 0;
                 }
             }
 
