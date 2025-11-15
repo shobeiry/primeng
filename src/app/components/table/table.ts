@@ -3375,20 +3375,16 @@ export class FrozenColumn implements AfterViewChecked {
         if (this._frozen) {
             const isRTL = DomHandler.isRTL(this.el.nativeElement);
             if (this.alignFrozen === 'right') {
-                const pos = isRTL ? 'left' : 'right';
-                const sibling = isRTL
-                    ? this.el.nativeElement.previousElementSibling
-                    : this.el.nativeElement.nextElementSibling;
+                const pos = isRTL ? 'right' : 'left';
+                const sibling = this.el.nativeElement.previousElementSibling;
                 let offset = 0;
                 if (sibling) {
                     offset = DomHandler.getOuterWidth(sibling) + (parseFloat(sibling.style[pos]) || 0);
                 }
-                this.el.nativeElement.style[isRTL ? 'left' : 'right'] = offset + 'px';
+                this.el.nativeElement.style[pos] = offset + 'px';
             } else {
-                const pos = isRTL ? 'right' : 'left';
-                const sibling = isRTL
-                    ? this.el.nativeElement.nextElementSibling
-                    : this.el.nativeElement.previousElementSibling;
+                const pos = isRTL ? 'left': 'right';
+                const sibling = this.el.nativeElement.nextElementSibling;
                 let offset = 0;
                 if (sibling) {
                     offset = DomHandler.getOuterWidth(sibling) + (parseFloat(sibling.style[pos]) || 0);
