@@ -3373,20 +3373,23 @@ export class FrozenColumn implements AfterViewChecked {
 
     updateStickyPosition() {
         if (this._frozen) {
+            const isRTL = DomHandler.isRTL(this.el.nativeElement);
             if (this.alignFrozen === 'right') {
-                let right = 0;
-                let next = this.el.nativeElement.nextElementSibling;
-                if (next) {
-                    right = DomHandler.getOuterWidth(next) + (parseFloat(next.style.right) || 0);
+                const pos = isRTL ? 'right' : 'left';
+                const sibling = this.el.nativeElement.previousElementSibling;
+                let offset = 0;
+                if (sibling) {
+                    offset = DomHandler.getOuterWidth(sibling) + (parseFloat(sibling.style[pos]) || 0);
                 }
-                this.el.nativeElement.style.right = right + 'px';
+                this.el.nativeElement.style[pos] = offset + 'px';
             } else {
-                let left = 0;
-                let prev = this.el.nativeElement.previousElementSibling;
-                if (prev) {
-                    left = DomHandler.getOuterWidth(prev) + (parseFloat(prev.style.left) || 0);
+                const pos = isRTL ? 'left': 'right';
+                const sibling = this.el.nativeElement.nextElementSibling;
+                let offset = 0;
+                if (sibling) {
+                    offset = DomHandler.getOuterWidth(sibling) + (parseFloat(sibling.style[pos]) || 0);
                 }
-                this.el.nativeElement.style.left = left + 'px';
+                this.el.nativeElement.style[pos] = offset + 'px';
             }
 
             const filterRow = this.el.nativeElement?.parentElement?.nextElementSibling;
@@ -3992,8 +3995,7 @@ export class ResizableColumn implements AfterViewInit, OnDestroy {
         if (pResizableColumnDisabled === this._pResizableColumnDisabled) return;
 
         this._pResizableColumnDisabled = pResizableColumnDisabled;
-        if (isPlatformBrowser(this.platformId) && this.isEnabled())
-            this.ngAfterViewInit();
+        if (isPlatformBrowser(this.platformId) && this.isEnabled()) this.ngAfterViewInit();
         else {
             if (this.resizerMouseDownListener) {
                 this.resizerMouseDownListener();
@@ -4011,7 +4013,7 @@ export class ResizableColumn implements AfterViewInit, OnDestroy {
                 DomHandler.removeClass(this.el.nativeElement, 'p-resizable-column');
             }
         }
-    };
+    }
 
     get pResizableColumnDisabled() {
         return this._pResizableColumnDisabled;
