@@ -3374,7 +3374,7 @@ export class FrozenColumn implements AfterViewChecked {
     updateStickyPosition() {
         if (this._frozen) {
             const isRTL = DomHandler.isRTL(this.el.nativeElement);
-            if (this.alignFrozen === 'right') {
+            if (this.alignFrozen === 'left') {
                 const pos = isRTL ? 'right' : 'left';
                 const sibling = this.el.nativeElement.previousElementSibling;
                 let offset = 0;
