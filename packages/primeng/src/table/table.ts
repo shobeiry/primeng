@@ -80,6 +80,7 @@ import {
 import { ObjectUtils, UniqueComponentId, ZIndexUtils } from 'primeng/utils';
 import { Subject, Subscription } from 'rxjs';
 import { TableStyle } from './style/tablestyle';
+import { isRTL } from '@primeuix/utils';
 
 const TABLE_INSTANCE = new InjectionToken<Table>('TABLE_INSTANCE');
 
@@ -2625,7 +2626,9 @@ export class Table<RowData = any> extends BaseComponent<TablePassThrough> implem
     }
 
     onColumnResizeEnd() {
-        const delta = this.resizeHelperViewChild?.nativeElement.offsetLeft - <number>this.lastResizerHelperX;
+        const currentX = DomHandler.getOffset(this.resizeHelperViewChild?.nativeElement).left - DomHandler.getOffset(this.el?.nativeElement).left;
+        const lastX = this.lastResizerHelperX ?? 0;
+        const delta = isRTL(this.el?.nativeElement) ? lastX - currentX : currentX - lastX;
         const columnWidth = this.resizeColumnElement.offsetWidth;
         const newColumnWidth = columnWidth + delta;
         const elementMinWidth = this.resizeColumnElement.style.minWidth.replace(/[^\d.]/g, '');
