@@ -398,6 +398,7 @@ export class Tooltip extends BaseComponent<TooltipPassThroughOptions> {
         if (this.documentEscapeListener) {
             this.documentEscapeListener();
         }
+        this.cd.detectChanges();
     }
 
     create() {
