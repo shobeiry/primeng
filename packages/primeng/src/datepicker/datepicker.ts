@@ -40,6 +40,7 @@ import { DatePickerMonthChangeEvent, DatePickerPassThrough, DatePickerResponsive
 import { ZIndexUtils } from 'primeng/utils';
 import { Subscription } from 'rxjs';
 import { DatePickerStyle } from './style/datepickerstyle';
+import { JDate } from './utils/jalali';
 
 export const DATEPICKER_VALUE_ACCESSOR: any = {
     provide: NG_VALUE_ACCESSOR,
@@ -499,6 +500,20 @@ const DATEPICKER_INSTANCE = new InjectionToken<DatePicker>('DATEPICKER_INSTANCE'
                         [pt]="ptm('pcTodayButton')"
                         [attr.data-pc-group-section]="'button'"
                     />
+                    @if (showCalendarChangerButton) {
+                        <p-button
+                            [label]="getTranslation(isJalali ? 'gregorianCalenderName' : 'jalaliCalenderName')"
+                            (keydown)="onContainerButtonKeydown($event)"
+                            (click)="onChangeCalenderButtonClick($event)"
+                            [styleClass]="cx('pcChangeCalendarButton')"
+                            [ngClass]="changeCalendarButtonStyleClass"
+                            severity="secondary"
+                            variant="text"
+                            size="small"
+                            [pt]="ptm('pcChangeCalendarButton')"
+                            [attr.data-pc-group-section]="'button'"
+                        />
+                    }
                     <p-button
                         size="small"
                         [styleClass]="cx('pcClearButton')"
@@ -553,6 +568,9 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
     bindDirectiveInstance = inject(Bind, { self: true });
 
     $pcDatePicker: DatePicker | undefined = inject(DATEPICKER_INSTANCE, { optional: true, skipSelf: true }) ?? undefined;
+
+    @Input() isJalali: boolean = false;
+    @Input() dir: 'ltr' | 'rtl';
 
     @Input() iconDisplay: 'input' | 'button' = 'button';
     /**
@@ -736,6 +754,11 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
      */
     @Input({ transform: booleanAttribute }) showButtonBar: boolean | undefined;
     /**
+     * Whether to display today and calendar changer buttons at the footer
+     * @group Props
+     */
+    @Input({ transform: booleanAttribute }) showCalendarChangerButton: boolean | undefined;
+    /**
      * Style class of the today button.
      * @group Props
      */
@@ -745,6 +768,11 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
      * @group Props
      */
     @Input() clearButtonStyleClass: string | undefined;
+    /**
+     * Style class of the calendar changer button.
+     * @group Props
+     */
+    @Input() changeCalendarButtonStyleClass: string = 'p-button-text';
     /**
      * When present, it specifies that the component should automatically get focus on load.
      * @group Props
@@ -941,8 +969,9 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
 
         if (this.initialized) {
             const date = defaultDate || new Date();
-            this.currentMonth = date.getMonth();
-            this.currentYear = date.getFullYear();
+            const _date = this.isJalali ? new JDate(date) : date;
+            this.currentMonth = _date.getMonth();
+            this.currentYear = _date.getFullYear();
             this.initTime(date);
             this.createMonths(this.currentMonth, this.currentYear);
         }
@@ -982,6 +1011,12 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
      * @group Emits
      */
     @Output() onClear: EventEmitter<any> = new EventEmitter<any>();
+    /**
+     * Callback to invoke when calendar changer button is clicked.
+     * @param {Event} event - browser event.
+     * @group Emits
+     */
+    @Output() onChangeCalendarClick: EventEmitter<any> = new EventEmitter();
     /**
      * Callback to invoke when input field is being typed.
      * @param {Event} event - browser event
@@ -1289,8 +1324,9 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
         this.panelId = this.attributeSelector + '_panel';
         const date = this.defaultDate || new Date();
         this.createResponsiveStyle();
-        this.currentMonth = date.getMonth();
-        this.currentYear = date.getFullYear();
+        const _date = this.isJalali ? new Date(date) : date;
+        this.currentMonth = _date.getMonth();
+        this.currentYear = _date.getFullYear();
         this.yearOptions = [];
         this.currentView = this.view;
 
@@ -1417,7 +1453,7 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
     monthPickerValues() {
         let monthPickerValues: any[] = [];
         for (let i = 0; i <= 11; i++) {
-            monthPickerValues.push(this.config.getTranslation('monthNamesShort')[i]);
+            monthPickerValues.push(this.config.getTranslation(this.isJalali ? 'jalaliMonthNamesShort' : 'monthNamesShort')[i]);
         }
 
         return monthPickerValues;
@@ -1775,11 +1811,12 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
     }
 
     formatDateMetaToDate(dateMeta: any): Date {
-        return new Date(dateMeta.year, dateMeta.month, dateMeta.day);
+        return this.isJalali ? new JDate(dateMeta.year, dateMeta.month, dateMeta.day).toDate() : new Date(dateMeta.year, dateMeta.month, dateMeta.day);
     }
 
     formatDateKey(date: Date): string {
-        return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+        const _date = this.isJalali ? new JDate(date) : date;
+        return `${_date.getFullYear()}-${_date.getMonth()}-${_date.getDate()}`;
     }
 
     setCurrentHourPM(hours: number) {
@@ -1876,6 +1913,12 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
     }
 
     getFirstDayOfMonthIndex(month: number, year: number) {
+        if (this.isJalali) {
+            const day = new JDate(year, month, 1).toDate();
+            let dayIndex = day.getDay() + this.getSundayIndex();
+            return dayIndex >= 7 ? dayIndex - 7 : dayIndex;
+        }
+
         let day = new Date();
         day.setDate(1);
         day.setMonth(month);
@@ -1886,7 +1929,8 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
     }
 
     getDaysCountInMonth(month: number, year: number) {
-        return 32 - this.daylightSavingAdjust(new Date(year, month, 32)).getDate();
+        const daylightSavingAdjust = this.isJalali ? new JDate(this.daylightSavingAdjust(new JDate(year, month, 32).toDate())) : this.daylightSavingAdjust(new Date(year, month, 32));
+        return 32 - daylightSavingAdjust.getDate();
     }
 
     getDaysCountInPrevMonth(month: number, year: number) {
@@ -1964,10 +2008,9 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
             if (!this.value[1]) {
                 return this.value[0]?.getFullYear() === this.currentYear && this.value[0]?.getMonth() === month;
             } else {
-                const currentDate = new Date(this.currentYear, month, 1);
-                const startDate = new Date(this.value[0].getFullYear(), this.value[0].getMonth(), 1);
-                const endDate = new Date(this.value[1].getFullYear(), this.value[1].getMonth(), 1);
-
+                const [currentDate, startDate, endDate] = this.isJalali
+                    ? [new JDate(this.currentYear, month, 1).toDate(), new JDate(this.value[0].getFullYear(), this.value[0].getMonth(), 1).toDate(), new JDate(this.value[1].getFullYear(), this.value[1].getMonth(), 1).toDate()]
+                    : [new Date(this.currentYear, month, 1), new Date(this.value[0].getFullYear(), this.value[0].getMonth(), 1), new Date(this.value[1].getFullYear(), this.value[1].getMonth(), 1)];
                 return currentDate >= startDate && currentDate <= endDate;
             }
         } else {
@@ -1996,15 +2039,19 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
         if (this.isComparable()) {
             let value = this.isRangeSelection() ? this.value[0] : this.value;
 
-            return !this.isMultipleSelection() ? value.getFullYear() === year : false;
+            return !this.isMultipleSelection() ? (this.isJalali ? new JDate(value) : value).getFullYear() === year : false;
         }
 
         return false;
     }
 
     isDateEquals(value: any, dateMeta: any) {
-        if (value && isDate(value)) return value.getDate() === dateMeta.day && value.getMonth() === dateMeta.month && value.getFullYear() === dateMeta.year;
-        else return false;
+        if (value && isDate(value)) {
+            if (this.isJalali) {
+                value = new JDate(value);
+            }
+            return value.getDate() === dateMeta.day && value.getMonth() === dateMeta.month && value.getFullYear() === dateMeta.year;
+        } else return false;
     }
 
     isDateBetween(start: Date, end: Date, dateMeta: any) {
@@ -2030,7 +2077,8 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
     }
 
     isToday(today: Date, day: number, month: number, year: number): boolean {
-        return today.getDate() === day && today.getMonth() === month && today.getFullYear() === year;
+        const _today = this.isJalali ? new JDate(today) : today;
+        return _today.getDate() === day && _today.getMonth() === month && _today.getFullYear() === year;
     }
 
     isSelectable(day: any, month: any, year: any, otherMonth: any): boolean {
@@ -2044,13 +2092,14 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
         }
 
         if (this.minDate) {
-            if (this.minDate.getFullYear() > year) {
+            const minDate = this.isJalali ? new JDate(this.minDate) : this.minDate;
+            if (minDate.getFullYear() > year) {
                 validMin = false;
-            } else if (this.minDate.getFullYear() === year && this.currentView != 'year') {
-                if (this.minDate.getMonth() > month) {
+            } else if (minDate.getFullYear() === year && this.currentView != 'year') {
+                if (minDate.getMonth() > month) {
                     validMin = false;
-                } else if (this.minDate.getMonth() === month) {
-                    if (this.minDate.getDate() > day) {
+                } else if (minDate.getMonth() === month) {
+                    if (minDate.getDate() > day) {
                         validMin = false;
                     }
                 }
@@ -2058,13 +2107,14 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
         }
 
         if (this.maxDate) {
-            if (this.maxDate.getFullYear() < year) {
+            const maxDate = this.isJalali ? new JDate(this.maxDate) : this.maxDate;
+            if (maxDate.getFullYear() < year) {
                 validMax = false;
             } else if (this.maxDate.getFullYear() === year) {
-                if (this.maxDate.getMonth() < month) {
+                if (maxDate.getMonth() < month) {
                     validMax = false;
                 } else if (this.maxDate.getMonth() === month) {
-                    if (this.maxDate.getDate() < day) {
+                    if (maxDate.getDate() < day) {
                         validMax = false;
                     }
                 }
@@ -2085,7 +2135,8 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
     isDateDisabled(day: number, month: number, year: number): boolean {
         if (this.disabledDates) {
             for (let disabledDate of this.disabledDates) {
-                if (disabledDate.getFullYear() === year && disabledDate.getMonth() === month && disabledDate.getDate() === day) {
+                const _disabledDate = this.isJalali ? new JDate(disabledDate) : disabledDate;
+                if (_disabledDate.getFullYear() === year && _disabledDate.getMonth() === month && _disabledDate.getDate() === day) {
                     return true;
                 }
             }
@@ -2096,7 +2147,7 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
 
     isDayDisabled(day: number, month: number, year: number): boolean {
         if (this.disabledDays) {
-            let weekday = new Date(year, month, day);
+            let weekday = this.isJalali ? new JDate(year, month, day).toDate() : new Date(year, month, day);
             let weekdayNumber = weekday.getDay();
             return this.disabledDays.indexOf(weekdayNumber) !== -1;
         }
@@ -2156,7 +2207,7 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
     }
 
     getMonthName(index: number) {
-        return this.config.getTranslation('monthNames')[index];
+        return this.config.getTranslation(this.isJalali ? 'jalaliMonthNames' : 'monthNames')[index];
     }
 
     getYear(month: any) {
@@ -3034,9 +3085,17 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
 
     isValidSelection(value: any): boolean {
         if (this.isSingleSelection()) {
+            if (this.isJalali) {
+                value = new JDate(value);
+            }
             return this.isSelectable(value.getDate(), value.getMonth(), value.getFullYear(), false);
         }
-        let isValid = value.every((v: any) => this.isSelectable(v.getDate(), v.getMonth(), v.getFullYear(), false));
+        let isValid = value.every((v: any) => {
+            if (this.isJalali) {
+                v = new JDate(v);
+            }
+            return this.isSelectable(v.getDate(), v.getMonth(), v.getFullYear(), false);
+        });
         if (isValid && this.isRangeSelection()) {
             isValid = value.length === 1 || (value.length > 1 && value[1] >= value[0]);
         }
@@ -3115,9 +3174,9 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
         }
 
         let val = this.defaultDate && this.isValidDate(this.defaultDate) && !this.value ? this.defaultDate : propValue && this.isValidDate(propValue) ? propValue : new Date();
-
-        this.currentMonth = val.getMonth();
-        this.currentYear = val.getFullYear();
+        const date = this.isJalali ? new JDate(val) : val;
+        this.currentMonth = date.getMonth();
+        this.currentYear = date.getFullYear();
         this.createMonths(this.currentMonth, this.currentYear);
 
         if (this.showTime || this.timeOnly) {
@@ -3316,7 +3375,7 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
     }
 
     getFirstDateOfWeek() {
-        return this._firstDayOfWeek || this.getTranslation(TranslationKeys.FIRST_DAY_OF_WEEK);
+        return this._firstDayOfWeek || this.getTranslation(this.isJalali ? TranslationKeys.JALALI_FIRST_DAY_OF_WEEK : TranslationKeys.FIRST_DAY_OF_WEEK);
     }
 
     // Ported from jquery-ui datepicker formatDate
@@ -3349,6 +3408,7 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
         let literal = false;
 
         if (date) {
+            const _date = this.isJalali ? new JDate(date) : date;
             for (iFormat = 0; iFormat < format.length; iFormat++) {
                 if (literal) {
                     if (format.charAt(iFormat) === "'" && !lookAhead("'")) {
@@ -3359,28 +3419,41 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
                 } else {
                     switch (format.charAt(iFormat)) {
                         case 'd':
-                            output += formatNumber('d', date.getDate(), 2);
+                            output += formatNumber('d', _date.getDate(), 2);
                             break;
                         case 'D':
-                            output += formatName('D', date.getDay(), this.getTranslation(TranslationKeys.DAY_NAMES_SHORT), this.getTranslation(TranslationKeys.DAY_NAMES));
+                            output += formatName('D', _date.getDay(), this.getTranslation(TranslationKeys.DAY_NAMES_SHORT), this.getTranslation(TranslationKeys.DAY_NAMES));
                             break;
                         case 'o':
-                            output += formatNumber('o', Math.round((new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / 86400000), 3);
+                            output += formatNumber(
+                                'o',
+                                Math.round(
+                                    (this.isJalali
+                                        ? _date.toDate().getTime() - new JDate(_date.getYear(), 0, 0).toDate().getTime()
+                                        : new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / 86400000
+                                ),
+                                3
+                            );
                             break;
                         case 'm':
-                            output += formatNumber('m', date.getMonth() + 1, 2);
+                            output += formatNumber('m', _date.getMonth() + 1, 2);
                             break;
                         case 'M':
-                            output += formatName('M', date.getMonth(), this.getTranslation(TranslationKeys.MONTH_NAMES_SHORT), this.getTranslation(TranslationKeys.MONTH_NAMES));
+                            output += formatName(
+                                'M',
+                                _date.getMonth(),
+                                this.getTranslation(this.isJalali ? TranslationKeys.JALALI_MONTH_NAMES_SHORT : TranslationKeys.MONTH_NAMES_SHORT),
+                                this.getTranslation(this.isJalali ? TranslationKeys.JALALI_MONTH_NAMES : TranslationKeys.MONTH_NAMES)
+                            );
                             break;
                         case 'y':
-                            output += lookAhead('y') ? date.getFullYear() : (date.getFullYear() % 100 < 10 ? '0' : '') + (date.getFullYear() % 100);
+                            output += lookAhead('y') ? _date.getFullYear() : (_date.getFullYear() % 100 < 10 ? '0' : '') + (_date.getFullYear() % 100);
                             break;
                         case '@':
-                            output += date.getTime();
+                            output += _date.getTime();
                             break;
                         case '!':
-                            output += date.getTime() * 10000 + <number>this.ticksTo1970;
+                            output += _date.getTime() * 10000 + <number>this.ticksTo1970;
                             break;
                         case "'":
                             if (lookAhead("'")) {
@@ -3474,7 +3547,7 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
             dim,
             extra,
             iValue = 0,
-            shortYearCutoff = typeof this.shortYearCutoff !== 'string' ? this.shortYearCutoff : (new Date().getFullYear() % 100) + parseInt(this.shortYearCutoff, 10),
+            shortYearCutoff = typeof this.shortYearCutoff !== 'string' ? this.shortYearCutoff : ((this.isJalali ? new JDate(new Date()) : new Date()).getFullYear() % 100) + parseInt(this.shortYearCutoff, 10),
             year = -1,
             month = -1,
             day = -1,
@@ -3560,19 +3633,29 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
                         month = getNumber('m');
                         break;
                     case 'M':
-                        month = getName('M', this.getTranslation(TranslationKeys.MONTH_NAMES_SHORT), this.getTranslation(TranslationKeys.MONTH_NAMES));
+                        month = getName(
+                            'M',
+                            this.getTranslation(this.isJalali ? TranslationKeys.JALALI_MONTH_NAMES_SHORT : TranslationKeys.MONTH_NAMES_SHORT),
+                            this.getTranslation(this.isJalali ? TranslationKeys.JALALI_MONTH_NAMES : TranslationKeys.MONTH_NAMES)
+                        );
                         break;
                     case 'y':
                         year = getNumber('y');
                         break;
                     case '@':
                         date = new Date(getNumber('@'));
+                        if (this.isJalali) {
+                            date = new JDate(date);
+                        }
                         year = date.getFullYear();
                         month = date.getMonth() + 1;
                         day = date.getDate();
                         break;
                     case '!':
                         date = new Date((getNumber('!') - <number>this.ticksTo1970) / 10000);
+                        if (this.isJalali) {
+                            date = new JDate(date);
+                        }
                         year = date.getFullYear();
                         month = date.getMonth() + 1;
                         day = date.getDate();
@@ -3598,9 +3681,10 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
         }
 
         if (year === -1) {
-            year = new Date().getFullYear();
+            year = (this.isJalali ? new JDate(new Date()) : new Date()).getFullYear();
         } else if (year < 100) {
-            year += new Date().getFullYear() - (new Date().getFullYear() % 100) + (year <= shortYearCutoff ? 0 : -100);
+            const date = this.isJalali ? new JDate(new Date()) : new Date();
+            year += date.getFullYear() - (date.getFullYear() % 100) + (year <= shortYearCutoff ? 0 : -100);
         }
 
         if (doy > -1) {
@@ -3621,9 +3705,9 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
             day = day === -1 ? 1 : day;
         }
 
-        date = this.daylightSavingAdjust(new Date(year, month - 1, day));
-
-        if (date.getFullYear() !== year || date.getMonth() + 1 !== month || date.getDate() !== day) {
+        date = this.daylightSavingAdjust(this.isJalali ? new JDate(year, month - 1, day).toDate() : new Date(year, month - 1, day));
+        const _date = this.isJalali ? new JDate(date) : date;
+        if (_date.getFullYear() !== year || _date.getMonth() + 1 !== month || _date.getDate() !== day) {
             throw 'Invalid date'; // E.g. 31/02/00
         }
 
@@ -3648,7 +3732,8 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
     }
 
     onTodayButtonClick(event: any) {
-        const date: Date = new Date();
+        const _date = new Date();
+        const date = this.isJalali ? new JDate(_date) : _date;
         const dateMeta = {
             day: date.getDate(),
             month: date.getMonth(),
@@ -3660,7 +3745,17 @@ export class DatePicker extends BaseInput<DatePickerPassThrough> {
 
         this.createMonths(date.getMonth(), date.getFullYear());
         this.onDateSelect(event, dateMeta);
-        this.onTodayClick.emit(date);
+        this.onTodayClick.emit(_date);
+    }
+
+    onChangeCalenderButtonClick(event: any) {
+        this.isJalali = !this.isJalali;
+        this.createWeekDays();
+        this.updateUI();
+        this.updateInputfield();
+        this.cd.detectChanges();
+        this.alignOverlay();
+        this.onChangeCalendarClick.emit(event);
     }
 
     onClearButtonClick(event: any) {
