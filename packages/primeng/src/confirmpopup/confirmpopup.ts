@@ -276,6 +276,7 @@ export class ConfirmPopup extends BaseComponent<ConfirmPopupPassThrough> {
                 }
 
                 this.visible = true;
+                this.align();
             }
         });
     }
