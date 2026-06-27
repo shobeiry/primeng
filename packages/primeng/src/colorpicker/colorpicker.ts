@@ -22,7 +22,7 @@ import {
     ViewEncapsulation
 } from '@angular/core';
 import { NG_VALUE_ACCESSOR } from '@angular/forms';
-import { absolutePosition, isTouchDevice, relativePosition } from '@primeuix/utils';
+import { absolutePosition, isRTL, isTouchDevice, relativePosition } from '@primeuix/utils';
 import { OverlayService, SharedModule, TranslationKeys } from 'primeng/api';
 import { AutoFocusModule } from 'primeng/autofocus';
 import { PARENT_INSTANCE } from 'primeng/basecomponent';
@@ -385,7 +385,12 @@ export class ColorPicker extends BaseEditableHolder<ColorPickerPassThrough> impl
 
     updateUI() {
         if (this.colorHandleViewChild && this.hueHandleViewChild?.nativeElement) {
-            this.colorHandleViewChild.nativeElement.style.left = Math.floor((150 * this.value.s) / 100) + 'px';
+            const position = Math.floor((150 * this.value.s) / 100);
+            if (isRTL(this.colorHandleViewChild.nativeElement)) {
+                this.colorHandleViewChild.nativeElement.style.right = `${150 - position}px`;
+            } else {
+                this.colorHandleViewChild.nativeElement.style.left = `${position}px`;
+            }
             this.colorHandleViewChild.nativeElement.style.top = Math.floor((150 * (100 - this.value.b)) / 100) + 'px';
             this.hueHandleViewChild.nativeElement.style.top = Math.floor(150 - (150 * this.value.h) / 360) + 'px';
         }
